@@ -102,19 +102,43 @@ const songsApi = {
     },
 };
 
-// Simulação de teste de carga
-const loadTest = async (numRequests) => {
+// Simulação de teste de carga com coleta de tempos de resposta
+const loadTestGet = async (numRequests) => {
     console.log(`Iniciando teste de carga com ${numRequests} requisições.`);
+    const responseTimes = [];
+    const startTime = Date.now();
+    const duration = 2 * 60 * 1000; // 2 minutos em milissegundos
+
     for (let i = 0; i < numRequests; i++) {
-        try {
-            const userData = { name: `Test User ${i}`, email: `testuser${i}@example.com` };
-            const user = await usersApi.createUser(userData);
-            console.log(`Usuário criado ${i}:`, user);
-        } catch (error) {
-            console.error(`Falha ao criar usuário ${i}:`, error);
+        const currentTime = Date.now();
+        if (currentTime - startTime >= duration) {
+            break; // Para o teste se já tiverem passado 2 minutos
         }
+
+        try {
+            const requestStartTime = Date.now();
+            await usersApi.getUsers();
+            const requestEndTime = Date.now();
+            responseTimes.push(requestEndTime - requestStartTime);
+        } catch (error) {
+            console.error(`Falha ao obter usuários ${i}:`, error);
+        }
+
+        // Aguarda um curto período antes de fazer a próxima requisição
+        await new Promise(resolve => setTimeout(resolve, duration / numRequests));
     }
+
     console.log("Teste de carga concluído.");
+
+    // Calcula o tempo médio de resposta
+    if (responseTimes.length > 0) {
+        const totalResponseTime = responseTimes.reduce((acc, time) => acc + time, 0);
+        const averageResponseTime = totalResponseTime / responseTimes.length;
+        return averageResponseTime;
+    } else {
+        console.log("Nenhuma resposta válida foi recebida.");
+        return null;
+    }
 };
 
 // Chamada das funções de exemplo e teste de carga
@@ -159,5 +183,6 @@ const loadTest = async (numRequests) => {
     console.log('Música deletada:', deletedSong);
 
     // Executando teste de carga
-    await loadTest(100);  // Ajuste o número de requisições conforme necessário
+    const averageResponseTime = await loadTestGet(10000);  // Ajuste o número de requisições conforme necessário
+    console.log(`Tempo médio de resposta: ${averageResponseTime} ms`);
 })();
